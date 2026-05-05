@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<!-- Playables SDK -->
+<script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
+(function() {
+  'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
+  if (window.playablesSDK) return;
+
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      p.timestamp = message.timestamp;
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
+})();</script>
+<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pubget - معايير سلامة الأطفال | Child Safety Standards</title>
+    <meta name="description" content="معايير سلامة الأطفال لتطبيق Pubget - Pubget Child Safety Standards">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #ffffff;
+            color: #1f2937;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Arabic", "Helvetica Neue", Arial, "Tahoma", sans-serif;
+            line-height: 1.8;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 24px 20px 60px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0 30px;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 40px;
+        }
+        
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #7c3aed;
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+        }
+        
+        header h1 {
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 6px;
+        }
+        
+        header .subtitle-en {
+            font-size: 1rem;
+            color: #6b7280;
+            direction: ltr;
+            font-weight: 500;
+        }
+        
+        .intro-box {
+            background: #f5f3ff;
+            border: 1px solid #ddd6fe;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        
+        .intro-box .ar {
+            font-size: 1.05rem;
+            color: #4c1d95;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        .intro-box .en {
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: #5b21b6;
+            text-align: center;
+            direction: ltr;
+            font-size: 0.9rem;
+        }
+        
+        section {
+            margin-bottom: 42px;
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 4px;
+            padding-right: 16px;
+            border-right: 4px solid #7c3aed;
+        }
+        
+        .en-title {
+            font-size: 0.95rem;
+            color: #7c3aed;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-right: 20px;
+            direction: ltr;
+            text-align: right;
+            opacity: 0.9;
+        }
+        
+        .ar {
+            font-size: 1.08rem;
+            color: #374151;
+            margin-bottom: 12px;
+        }
+        
+        .en {
+            font-size: 0.93rem;
+            color: #6b7280;
+            background: #f9fafb;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 10px;
+            direction: ltr;
+            text-align: left;
+            border-right: 3px solid #e5e7eb;
+            line-height: 1.6;
+        }
+        
+        ul.ar-list {
+            list-style: none;
+            padding-right: 0;
+            margin: 16px 0;
+        }
+        
+        ul.ar-list li {
+            position: relative;
+            padding-right: 28px;
+            margin-bottom: 12px;
+            font-size: 1.05rem;
+            color: #374151;
+        }
+        
+        ul.ar-list li::before {
+            content: "•";
+            position: absolute;
+            right: 8px;
+            color: #dc2626;
+            font-size: 1.4rem;
+            line-height: 1;
+            top: 2px;
+        }
+        
+        .en-list {
+            margin: 0;
+            padding-left: 20px;
+            direction: ltr;
+            text-align: left;
+        }
+        
+        .en-list li {
+            margin-bottom: 6px;
+        }
+        
+        .warning {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-right: 4px solid #dc2626;
+            border-radius: 10px;
+            padding: 18px;
+            margin: 20px 0;
+        }
+        
+        .warning .ar {
+            color: #991b1b;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .warning .en {
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: #b91c1c;
+            margin-top: 4px;
+        }
+        
+        .contact-box {
+            background: #ffffff;
+            border: 2px solid #7c3aed;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .contact-box .ar {
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+        
+        .email {
+            display: inline-block;
+            direction: ltr;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #7c3aed;
+            background: #f5f3ff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            margin: 8px 0;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .email:hover {
+            background: #ede9fe;
+            transform: translateY(-1px);
+        }
+        
+        .footer {
+            margin-top: 60px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+        }
+        
+        .footer .ar {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        
+        .footer .en {
+            background: transparent;
+            border: none;
+            padding: 0;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.85rem;
+            direction: ltr;
+        }
+        
+        strong {
+            color: #111827;
+            font-weight: 700;
+        }
+        
+        @media (max-width: 640px) {
+            .container {
+                padding: 20px 16px 40px;
+            }
+            
+            header h1 {
+                font-size: 1.6rem;
+            }
+            
+            .logo {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 1.3rem;
+            }
+            
+            .ar {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">Pubget</div>
+            <h1>معايير سلامة الأطفال</h1>
+            <div class="subtitle-en">Child Safety Standards</div>
+        </header>
+
+        <div class="intro-box">
+            <p class="ar">تطبيق Pubget هو منصة دردشة ولعب أدوار الأنمي. سلامة مجتمعنا، وخاصة الأطفال، هي أولويتنا.</p>
+            <p class="en">Pubget is an anime roleplay chat app. The safety of our community, especially children, is our priority.</p>
+        </div>
+
+        <!-- Section 1 -->
+        <section>
+            <h2>١. التزامنا</h2>
+            <div class="en-title">1. Our Commitment</div>
+            <p class="ar">
+                في <strong>Pubget</strong>، نلتزم التزامًا كاملاً بحماية الأطفال والمراهقين على منصتنا. نحن نوفر بيئة آمنة وإيجابية لجميع المستخدمين، ونطبق <strong>سياسة عدم تسامح مطلق</strong> تجاه أي محتوى أو سلوك يُعرّض الأطفال للخطر أو الاستغلال.
+            </p>
+            <p class="en">
+                At Pubget, we are fully committed to protecting children and teens on our platform. We provide a safe and positive environment for all users, and we enforce a strict <strong>zero-tolerance policy</strong> against any content or behavior that endangers or exploits children.
+            </p>
+        </section>
+
+        <!-- Section 2 -->
+        <section>
+            <h2>٢. المحتوى المحظور</h2>
+            <div class="en-title">2. Prohibited Content (CSAE)</div>
+            <p class="ar">
+                يُحظر تمامًا نشر أو مشاركة أو طلب أو تخزين أي محتوى يتعلق بإساءة معاملة الأطفال واستغلالهم جنسيًا (CSAE):
+            </p>
+            <ul class="ar-list">
+                <li>أي محتوى يصور أو يصف الإساءة الجنسية للأطفال.</li>
+                <li>الصور، الرسومات، أو النصوص التي تروج لاستغلال الأطفال.</li>
+                <li>محاولة التواصل مع طفل بهدف الاستغلال الجنسي (الاستمالة - Grooming).</li>
+                <li>مشاركة مواد إباحية للأطفال أو روابط لها.</li>
+                <li>تمثيل علاقات رومانسية أو جنسية بين بالغ وطفل في لعب الأدوار.</li>
+                <li>طلب معلومات شخصية من القُصّر.</li>
+            </ul>
+            
+            <div class="warning">
+                <p class="ar">أي حساب ينتهك هذه القواعد سيتم حظره نهائيًا فورًا.</p>
+                <p class="en">Any account violating these rules will be permanently banned immediately.</p>
+            </div>
+
+            <p class="en">
+                The following is strictly prohibited from being posted, shared, requested, or stored - any content related to Child Sexual Abuse and Exploitation (CSAE):
+            </p>
+            <div class="en">
+                <ul class="en-list">
+                    <li>Any content depicting or describing child sexual abuse.</li>
+                    <li>Images, illustrations, or text promoting child exploitation.</li>
+                    <li>Attempting to contact a child for sexual exploitation (Grooming).</li>
+                    <li>Sharing child sexual abuse material (CSAM) or links to it.</li>
+                    <li>Depicting romantic or sexual relationships between an adult and a child in roleplay.</li>
+                    <li>Soliciting personal information from minors.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Section 3 -->
+        <section>
+            <h2>٣. آلية الإبلاغ</h2>
+            <div class="en-title">3. Reporting Mechanism</div>
+            <p class="ar">
+                إذا رأيت أي محتوى مريب أو ينتهك معايير السلامة، يرجى الإبلاغ عنه فورًا. يمكنك استخدام زر "إبلاغ" داخل التطبيق، أو التواصل مباشرة مع فريق السلامة لدينا.
+            </p>
+            <p class="en">
+                If you see any suspicious content or a violation of our safety standards, please report it immediately. You can use the "Report" button inside the app, or contact our Safety Team directly.
+            </p>
+
+            <div class="contact-box">
+                <p class="ar">للإبلاغ عبر البريد الإلكتروني:</p>
+                <a href="mailto:zekariasbika253@gmail.com" class="email">zekariasbika253@gmail.com</a>
+                <p class="en" style="background:transparent; border:none; text-align:center; margin-top:8px; padding:0;">We review all reports within 24 hours and take immediate action.</p>
+                <p class="ar" style="font-size:0.95rem; margin-top:4px;">نراجع جميع البلاغات خلال 24 ساعة ونتخذ إجراءً فوريًا.</p>
+            </div>
+        </section>
+
+        <!-- Section 4 -->
+        <section>
+            <h2>٤. الإشراف والمراقبة</h2>
+            <div class="en-title">4. Moderation</div>
+            <p class="ar">
+                نستخدم <strong>نظامًا مزدوجًا</strong> يجمع بين الذكاء الاصطناعي والمراجعة البشرية لمراقبة المحادثات والمحتوى على مدار الساعة. يتم حظر الكلمات والعبارات الخطرة تلقائيًا، ويتم تعليق الحسابات المخالفة فورًا وحذف المحتوى الضار.
+            </p>
+            <p class="en">
+                We use a <strong>dual system</strong> combining AI technology and human review to monitor conversations and content 24/7. Dangerous keywords and phrases are automatically blocked, violating accounts are immediately suspended, and harmful content is deleted.
+            </p>
+        </section>
+
+        <!-- Section 5 -->
+        <section>
+            <h2>٥. الامتثال لسياسات Google Play</h2>
+            <div class="en-title">5. Compliance with Google Play</div>
+            <p class="ar">
+                يلتزم تطبيق Pubget بشكل كامل بـ <strong>معايير سلامة الأطفال الخاصة بـ Google Play</strong>. نحن نتعاون بشكل كامل مع سلطات إنفاذ القانون، ونقوم بالإبلاغ عن أي حالة استغلال جنسي للأطفال إلى المركز الوطني للأطفال المفقودين والمستغلين (NCMEC) والجهات المختصة.
+            </p>
+            <p class="en">
+                Pubget fully complies with <strong>Google Play's Child Safety Standards</strong>. We cooperate fully with law enforcement authorities, and we report any instances of child sexual exploitation to the National Center for Missing & Exploited Children (NCMEC) and relevant authorities.
+            </p>
+        </section>
+
+        <div class="footer">
+            <p class="ar">آخر تحديث: 5 مايو 2025 | Pubget Safety Team</p>
+            <p class="en">Last Updated: May 5, 2025 | Pubget Safety Team</p>
+        </div>
+    </div>
+</body>
+</html>
